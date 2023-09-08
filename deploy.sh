@@ -1,20 +1,17 @@
 #!/usr/bin/env bash
 set -e
 
-export ENVIRONMENT=$1
-export AWS_REGION=$2
-export ACTION=$3
-export AWS_AVAILABILITY_ZONE=$(aws ec2 describe-availability-zones --region $AWS_REGION --query 'AvailabilityZones[0].ZoneName' --output text)
-export AWS_PARTITION="aws"
-export CLUSTER_NAME="devseed-k8s-${ENVIRONMENT}"
-export KUBERNETES_VERSION="1.27"
-export AWS_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
-export AWS_POLICY_NAME=devseed-k8s_${ENVIRONMENT}
-export AWS_POLICY_ARN=arn:aws:iam::${AWS_ACCOUNT_ID}:policy/${AWS_POLICY_NAME}
+function get_az_public_subnet() {
+  local vpc_name="$1"
+  local region="$2"
+  local vpc_id=$(aws ec2 describe-vpcs --region "$region" --filters "Name=tag:Name,Values=$vpc_name" --query 'Vpcs[0].VpcId' --output text)
+  local az_public_subnet=$(aws ec2 describe-subnets --region "$region" --filters "Name=vpc-id,Values=$vpc_id" "Name=map-public-ip-on-launch,Values=true" --query 'Subnets[0].AvailabilityZone' --output text)
+  echo "$az_public_subnet"
+}
 
 function createNodeGroups {
     ACTION=$1
-    read -p "Are you sure you want to create NODES in the CLUSTER ${CLUSTER_NAME} in REGION ${AWS_REGION}? (y/n): " confirm
+    read -p "Are you sure you want to $ACTION NODES in the CLUSTER ${CLUSTER_NAME} in REGION ${AWS_REGION}? (y/n): " confirm
     if [[ $confirm == [Yy] ]]; then
         # Read the YAML file and convert it to a JSON string
         instance_json=$(python -c 'import sys, yaml, json; json.dump(yaml.safe_load(sys.stdin), sys.stdout, indent=4)' <instance_list.yaml)
@@ -39,15 +36,17 @@ function createNodeGroups {
                     --output text | grep -q $FAMILY; then
 
                     export NODEGROUP_TYPE=$nodegroup_type-$type
-                    echo "######## Creating node: $FAMILY - $type"
+                    echo "##################### $ACTION node: $FAMILY - $type"
+                    echo "##########################################"
                     echo "Family:" $FAMILY
                     echo "Spot Price:" $SPOT_PRICE
                     echo "Nodegroup Type:" $NODEGROUP_TYPE
                     echo "- $NODEGROUP_TYPE" >>$CLUSTER_NAME-nodes.yaml
 
                     # Create nodeGroups for the cluster
-                    envsubst <nodeGroups_gpu_spot.yaml | eksctl $ACTION nodegroup -f -
-                    envsubst <nodeGroups_gpu_ondemand.yaml | eksctl $ACTION nodegroup -f -
+                    set -x
+                    envsubst <nodeGroups_gpu_$type.yaml | eksctl $ACTION nodegroup -f -
+                    set +x
                 else
                     echo "Instance type $FAMILY is NOT available in $AWS_AVAILABILITY_ZONE"
                 fi
@@ -102,6 +101,20 @@ function deleteCluster {
 }
 
 ### Main
+export ENVIRONMENT=$1
+export AWS_REGION=$2
+export ACTION=$3
+export AWS_PARTITION="aws"
+export CLUSTER_NAME="devseed-k8s-${ENVIRONMENT}"
+export KUBERNETES_VERSION="1.27"
+export AWS_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+export AWS_POLICY_NAME=devseed-k8s_${ENVIRONMENT}
+export AWS_POLICY_ARN=arn:aws:iam::${AWS_ACCOUNT_ID}:policy/${AWS_POLICY_NAME}
+export VPC_NAME="eksctl-${CLUSTER_NAME}-cluster/VPC"
+export AWS_AVAILABILITY_ZONE=us-east-1b
+# TODO: fix later
+# export AWS_AVAILABILITY_ZONE=$(get_az_public_subnet $VPC_NAME $AWS_REGION)
+
 ACTION=${ACTION:-default}
 if [ "$ACTION" == "create_cluster" ]; then
     createCluster
