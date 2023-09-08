@@ -5,7 +5,7 @@ metadata:
   region: ${AWS_REGION}
 
 nodeGroups:
-- name: gpu-ondemand-${INSTANCE_TYPE_NAME}
+- name: gpu-${NODEGROUP_TYPE}
   desiredCapacity: 0
   minSize: 0
   maxSize: 1
@@ -14,17 +14,17 @@ nodeGroups:
     publicKeyName: k8s-sam
   volumeSize: 100
   volumeType: gp2
-  instanceType: ${INSTANCE_TYPE}
+  instanceType: ${FAMILY}
   availabilityZones: ["${AWS_AVAILABILITY_ZONE}"]
   labels:
-    nodegroup_type: gpu-ondemand-${INSTANCE_TYPE_NAME}
+    nodegroup_type: ${NODEGROUP_TYPE}
   tags:
     # EC2 tags required for cluster-autoscaler auto-discovery
     k8s.io/cluster-autoscaler/node-template/label/lifecycle: OnDemand
     k8s.io/cluster-autoscaler/node-template/label/aws.amazon.com/spot: "false"
     k8s.io/cluster-autoscaler/node-template/label/gpu-count: "0"
     k8s.io/cluster-autoscaler/${CLUSTER_NAME}: "owned"
-    k8s.io/cluster-autoscaler/node-template/label/nodegroup_type: "gpu-ondemand-${INSTANCE_TYPE_NAME}"
+    k8s.io/cluster-autoscaler/node-template/label/nodegroup_type: "${NODEGROUP_TYPE}"
   iam:
     attachPolicyARNs:
     - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy

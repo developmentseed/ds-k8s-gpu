@@ -4,19 +4,18 @@ This script utilizes eksctl to deploy a Kubernetes cluster that is equipped with
 
 e.g: https://github.com/developmentseed/ds-helm-chart
 
-# Deploy a cluster
+## Create/Delete a cluster
 
 ```sh
-./deploy.sh <enviroment> <aws_region> create
-# e.g
-./deploy.sh staging us-west-1 create
+./deploy.sh <enviroment> <aws_region> create_cluster
+./deploy.sh <enviroment> <aws_region> delete_cluster
 ```
 
+Once you have created your cluster, the next step is to create your GPU nodes. The configuration can be found in the instance_list.yaml file, which you can modify according to the instances you require.
 
-# Delete a cluster
+## Create/Delete GPU nodes
 
 ```sh
-./deploy.sh <enviroment> <aws_region> delete
-# e.g
-./deploy.sh staging us-west-1 delete
+./deploy.sh <enviroment> <aws_region> create_nodes
+./deploy.sh <enviroment> <aws_region> delete_nodes
 ```

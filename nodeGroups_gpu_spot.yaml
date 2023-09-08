@@ -5,7 +5,7 @@ metadata:
   region: ${AWS_REGION}
 
 nodeGroups:
-- name: gpu-spot-${INSTANCE_TYPE_NAME}
+- name: gpu-${NODEGROUP_TYPE}
   desiredCapacity: 0
   minSize: 0
   maxSize: 1
@@ -13,8 +13,8 @@ nodeGroups:
     allow: true
     publicKeyName: k8s-sam
   instancesDistribution:
-    maxPrice: ${PRICE}
-    instanceTypes: ["${INSTANCE_TYPE}"]
+    maxPrice: ${SPOT_PRICE}
+    instanceTypes: ["${FAMILY}"]
     onDemandBaseCapacity: 0
     onDemandPercentageAboveBaseCapacity: 0
     # spotAllocationStrategy: capacity-optimized
@@ -22,7 +22,7 @@ nodeGroups:
     lifecycle: Ec2Spot
     aws.amazon.com/spot: "true"
     gpu-count: "0"
-    nodegroup_type: gpu-spot-${INSTANCE_TYPE_NAME}
+    nodegroup_type: ${NODEGROUP_TYPE}
   availabilityZones: ["${AWS_AVAILABILITY_ZONE}"]
   taints:
   - key: spotInstance
@@ -35,7 +35,7 @@ nodeGroups:
     k8s.io/cluster-autoscaler/node-template/taint/spotInstance: "true:PreferNoSchedule"
     k8s.io/cluster-autoscaler/enabled: "true"
     k8s.io/cluster-autoscaler/${CLUSTER_NAME}: "owned"
-    k8s.io/cluster-autoscaler/node-template/label/nodegroup_type: "gpu-spot-${INSTANCE_TYPE_NAME}"
+    k8s.io/cluster-autoscaler/node-template/label/nodegroup_type: "${NODEGROUP_TYPE}"
   iam:
     attachPolicyARNs:
     - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy

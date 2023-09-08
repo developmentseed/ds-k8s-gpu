@@ -12,86 +12,80 @@ export AWS_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output te
 export AWS_POLICY_NAME=devseed-k8s_${ENVIRONMENT}
 export AWS_POLICY_ARN=arn:aws:iam::${AWS_ACCOUNT_ID}:policy/${AWS_POLICY_NAME}
 
-function createPolicy {
-    POLICY_ARN=$(aws iam list-policies --query 'Policies[?PolicyName==`'${AWS_POLICY_NAME}'`].Arn' --output text)
-    if [ "$POLICY_ARN" != "$AWS_POLICY_ARN" ]; then
-        envsubst <policy.template.json >policy.json
-        aws iam create-policy --policy-name ${AWS_POLICY_NAME} --policy-document file://policy.json
-        rm policy.json
-    else
-        echo "Policy ${AWS_POLICY_NAME} already exist."
+function createNodeGroups {
+    ACTION=$1
+    read -p "Are you sure you want to create NODES in the CLUSTER ${CLUSTER_NAME} in REGION ${AWS_REGION}? (y/n): " confirm
+    if [[ $confirm == [Yy] ]]; then
+        # Read the YAML file and convert it to a JSON string
+        instance_json=$(python -c 'import sys, yaml, json; json.dump(yaml.safe_load(sys.stdin), sys.stdout, indent=4)' <instance_list.yaml)
+        echo "nodegroup_type" >$CLUSTER_NAME-nodes.yaml
+        # Loop through the JSON array and populate the variables
+        length=$(echo $instance_json | jq '.instances | length')
+        for ((i = 0; i < $length; i++)); do
+            export FAMILY=$(echo $instance_json | jq -r ".instances[$i].family")
+            INSTANCE_TYPE=$(echo $instance_json | jq -r ".instances[$i].instance_type")
+            export SPOT_PRICE=$(echo $instance_json | jq -r ".instances[$i].spot_price")
+            nodegroup_type=$(echo $instance_json | jq -r ".instances[$i].nodegroup_type")
+
+            # Split instance_type into spot and ondemand
+            IFS=',' read -ra types <<<"$INSTANCE_TYPE"
+            for type in "${types[@]}"; do
+
+                # Check if instance family exist in the AZ
+                if aws ec2 describe-instance-type-offerings \
+                    --location-type availability-zone \
+                    --filters Name=instance-type,Values=$FAMILY \
+                    --query "InstanceTypeOfferings[?Location=='$AWS_AVAILABILITY_ZONE'].InstanceType" \
+                    --output text | grep -q $FAMILY; then
+
+                    export NODEGROUP_TYPE=$nodegroup_type-$type
+                    echo "######## Creating node: $FAMILY - $type"
+                    echo "Family:" $FAMILY
+                    echo "Spot Price:" $SPOT_PRICE
+                    echo "Nodegroup Type:" $NODEGROUP_TYPE
+                    echo "- $NODEGROUP_TYPE" >>$CLUSTER_NAME-nodes.yaml
+
+                    # Create nodeGroups for the cluster
+                    envsubst <nodeGroups_gpu_spot.yaml | eksctl $ACTION nodegroup -f -
+                    envsubst <nodeGroups_gpu_ondemand.yaml | eksctl $ACTION nodegroup -f -
+                else
+                    echo "Instance type $FAMILY is NOT available in $AWS_AVAILABILITY_ZONE"
+                fi
+            done
+        done
     fi
 }
 
-function createNodeGroups {
-    ACTION=$1
-    instance_list=(
-        # "g4ad.xlarge,0.2"
-        # "g4ad.8xlarge,1.1"
-        # "g4ad.16xlarge,2.3"
-        "g5.xlarge,0.5"
-        "g5.2xlarge,0.6"
-        "g5.4xlarge,1.5"
-    )
-    for instance_info in "${instance_list[@]}"; do
-        IFS=',' read -ra INFO <<<"$instance_info"
-        export INSTANCE_TYPE="${INFO[0]}"
-        export PRICE="${INFO[1]}"
-        export INSTANCE_TYPE_NAME="${INSTANCE_TYPE//./-}"
-
-        if [ "$ACTION" == "create" ]; then
-            # Check whether a given instance type is available in a given AZ
-            if aws ec2 describe-instance-type-offerings \
-                --location-type availability-zone \
-                --filters Name=instance-type,Values=$INSTANCE_TYPE \
-                --query "InstanceTypeOfferings[?Location=='$AWS_AVAILABILITY_ZONE'].InstanceType" \
-                --output text | grep -q $INSTANCE_TYPE; then
-
-                #### Create nodeGroups for the cluster
-                envsubst <nodeGroups_gpu_spot.yaml | eksctl create nodegroup -f -
-                envsubst <nodeGroups_gpu_ondemand.yaml | eksctl create nodegroup -f -
-
-            else
-                echo "Instance type $INSTANCE_TYPE is NOT available in $AWS_AVAILABILITY_ZONE"
-            fi
-        elif [ "$ACTION" == "delete" ]; then
-            envsubst <nodeGroups_gpu_spot.yaml | eksctl delete nodegroup --approve -f -
-        fi
-    done
-}
-
 function createCluster {
-    read -p "Are you sure you want to create a cluster ${CLUSTER_NAME} in region ${AWS_REGION}? (y/n): " confirm
+    read -p "Are you sure you want to CREATE a CLUSTER ${CLUSTER_NAME} in REGION ${AWS_REGION}? (y/n): " confirm
     if [[ $confirm == [Yy] ]]; then
-        ### Create cluster
+        # Create cluster
         envsubst <cluster.yaml | eksctl create cluster -f -
 
-        #### Create ASG policy
-        createPolicy
+        # Create ASG policy
+        envsubst <policy.template.json >policy.json
+        aws iam create-policy --policy-name ${AWS_POLICY_NAME} --policy-document file://policy.json
 
-        #### Create CPU node
+        # Create CPU node
         envsubst <nodeGroups_cpu.yaml | eksctl create nodegroup -f -
 
-        # Create GPU nodes
-        createNodeGroups create
-
-        ### Get cluster credentials
+        # Get cluster credentials
         aws eks update-kubeconfig --region ${AWS_REGION} --name ${CLUSTER_NAME}
         kubectl cluster-info
 
-        #### Install eb-csi addons
+        # Install eb-csi addons
         kubectl apply -k "github.com/kubernetes-sigs/aws-ebs-csi-driver/deploy/kubernetes/overlays/stable/?ref=master"
         kubectl get pods -n kube-system | grep ebs-csi
 
-        #### Metricts server
+        # Metricts server
         kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
         kubectl get pods -n kube-system | grep metrics-server
 
-        ## Install autoscaler
+        # Install autoscaler
         envsubst <asg-autodiscover.yaml | kubectl apply -f -
         kubectl get pods --namespace=kube-system | grep autoscaler
 
-        #### Update aws-auth
+        # Update aws-auth
         kubectl get configmap aws-auth -n kube-system -o yaml >aws-auth.yaml
         echo "Update manually aws-auth.yaml, use as example mapUsers.yaml"
         echo "kubectl apply -f aws-auth.yaml"
@@ -100,20 +94,25 @@ function createCluster {
 }
 
 function deleteCluster {
-    read -p "Are you sure you want to delete the cluster ${CLUSTER_NAME} in region ${AWS_REGION}? (y/n): " confirm
+    read -p "Are you sure you want to DELETE the CLUSTER ${CLUSTER_NAME} in REGION ${AWS_REGION}? (y/n): " confirm
     if [[ $confirm == [Yy] ]]; then
         eksctl delete cluster --region=${AWS_REGION} --name=${CLUSTER_NAME}
-        createNodeGroups delete
         aws iam delete-policy --policy-arn ${AWS_POLICY_ARN}
     fi
 }
 
 ### Main
 ACTION=${ACTION:-default}
-if [ "$ACTION" == "create" ]; then
+if [ "$ACTION" == "create_cluster" ]; then
     createCluster
-elif [ "$ACTION" == "delete" ]; then
+elif [ "$ACTION" == "delete_cluster" ]; then
     deleteCluster
+elif [ "$ACTION" == "create_nodes" ]; then
+    # Create GPU nodes
+    createNodeGroups create
+elif [ "$ACTION" == "delete_nodes" ]; then
+    # Delete GPU nodes
+    createNodeGroups delete
 else
     echo "The action is unknown."
 fi
