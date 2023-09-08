@@ -44,9 +44,7 @@ function createNodeGroups {
                     echo "- $NODEGROUP_TYPE" >>$CLUSTER_NAME-nodes.yaml
 
                     # Create nodeGroups for the cluster
-                    set -x
                     envsubst <nodeGroups_gpu_$type.yaml | eksctl $ACTION nodegroup -f -
-                    set +x
                 else
                     echo "Instance type $FAMILY is NOT available in $AWS_AVAILABILITY_ZONE"
                 fi

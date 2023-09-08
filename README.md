@@ -21,3 +21,19 @@ Once you have created your cluster, the next step is to create your GPU nodes. T
 ```
 
 Once you have created your nodes, you will have a file called `devseed-k8s-<enviroment>-nodes.yaml`, which will contain the available nodegroup_type for you to use to deploy the helm charts.
+
+
+## Using Persistence Disk
+
+If you plan to use persistent disks, make sure to first check the availability zone where your nodes are created. e.g: `us-east-1b` then:
+
+```sh
+aws ec2 create-volume \
+  --region us-east-1 \
+  --availability-zone us-east-1b \
+  --size 20 \
+  --volume-type gp2 \
+  --tag-specifications 'ResourceType=volume,Tags=[{Key=Name,Value=devseed-ebs-test}]'
+```
+
+Copy the `VolumeId` and add in the `values.yaml` file
