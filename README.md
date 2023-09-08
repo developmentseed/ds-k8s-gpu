@@ -1,6 +1,6 @@
 # DevSeed k8s GPU cluster
 
-This script utilizes eksctl to deploy a Kubernetes cluster that is equipped with GPU support. In addition, it allows users to choose between Spot and On-Demand instances. Once the cluster is up, it also prepares the environment for deploying Helm charts.
+This is a lab project aimed at providing easy access to GPU instances for machine learning engineers. The script uses eksctl to deploy a Kubernetes cluster that is equipped with GPU support. In addition, it allows users to choose between Spot and On-Demand instances. Once the cluster is up and running, it also prepares the environment for deploying Helm charts.
 
 e.g: https://github.com/developmentseed/ds-helm-chart
 
@@ -19,3 +19,5 @@ Once you have created your cluster, the next step is to create your GPU nodes. T
 ./deploy.sh <enviroment> <aws_region> create_nodes
 ./deploy.sh <enviroment> <aws_region> delete_nodes
 ```
+
+Once you have created your nodes, you will have a file called `devseed-k8s-<enviroment>-nodes.yaml`, which will contain the available nodegroup_type for you to use to deploy the helm charts.
