@@ -18,6 +18,13 @@ nodeGroups:
   availabilityZones: ["${AWS_AVAILABILITY_ZONE}"]
   labels:
     nodegroup_type: ${NODEGROUP_TYPE}
+  preBootstrapCommands:
+  - "sudo yum update -y"
+  - "sudo yum install -y git"
+  - "sudo yum install -y aws-cli"
+  - "sudo ssh-keygen -b 2048 -t rsa -f /root/.ssh/id_rsa -q -N ''"
+  - "sudo cat /root/.ssh/id_rsa.pub"
+  - "sudo yum update openssl"
   tags:
     # EC2 tags required for cluster-autoscaler auto-discovery
     k8s.io/cluster-autoscaler/node-template/label/lifecycle: OnDemand

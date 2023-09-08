@@ -37,3 +37,20 @@ aws ec2 create-volume \
 ```
 
 Copy the `VolumeId` and add in the `values.yaml` file
+
+
+## SSH into the GPU node
+
+You can access the GPU node via SSH using a key pair that has been created in AWS, named `k8s-sam`. If you require access to the associated private key, `k8s-sam.pem`, please reach out to the cluster administrator. If you are setting up your own cluster, you'll also need to create this key pair. To make your experience smoother, essential applications like `git` and `aws-cli` are pre-installed on the node. 
+
+*TODO: install `docker-compose`*
+
+```sh
+sudo systemctl enable docker
+sudo usermod -aG docker ${USER}
+newgrp docker
+ls -la /var/run/docker.sock
+sudo systemctl restart docker
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+```

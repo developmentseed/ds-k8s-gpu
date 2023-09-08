@@ -2,11 +2,11 @@
 set -e
 
 function get_az_public_subnet() {
-  local vpc_name="$1"
-  local region="$2"
-  local vpc_id=$(aws ec2 describe-vpcs --region "$region" --filters "Name=tag:Name,Values=$vpc_name" --query 'Vpcs[0].VpcId' --output text)
-  local az_public_subnet=$(aws ec2 describe-subnets --region "$region" --filters "Name=vpc-id,Values=$vpc_id" "Name=map-public-ip-on-launch,Values=true" --query 'Subnets[0].AvailabilityZone' --output text)
-  echo "$az_public_subnet"
+    local vpc_name="$1"
+    local region="$2"
+    local vpc_id=$(aws ec2 describe-vpcs --region "$region" --filters "Name=tag:Name,Values=$vpc_name" --query 'Vpcs[0].VpcId' --output text)
+    local az_public_subnet=$(aws ec2 describe-subnets --region "$region" --filters "Name=vpc-id,Values=$vpc_id" "Name=map-public-ip-on-launch,Values=true" --query 'Subnets[0].AvailabilityZone' --output text)
+    echo "$az_public_subnet"
 }
 
 function createNodeGroups {
@@ -44,7 +44,11 @@ function createNodeGroups {
                     echo "- $NODEGROUP_TYPE" >>$CLUSTER_NAME-nodes.yaml
 
                     # Create nodeGroups for the cluster
-                    envsubst <nodeGroups_gpu_$type.yaml | eksctl $ACTION nodegroup -f -
+                    if [ "$ACTION" == "create" ]; then
+                        envsubst <nodeGroups_gpu_$type.yaml | eksctl create nodegroup -f -
+                    elif [ "$ACTION" == "delete" ]; then
+                        envsubst <nodeGroups_gpu_$type.yaml | eksctl delete nodegroup --approve -f -
+                    fi
                 else
                     echo "Instance type $FAMILY is NOT available in $AWS_AVAILABILITY_ZONE"
                 fi
