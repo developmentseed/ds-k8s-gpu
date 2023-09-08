@@ -1,0 +1,36 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: ${CLUSTER_NAME}
+  region: ${AWS_REGION}
+
+nodeGroups:
+- name: gpu-ondemand-${INSTANCE_TYPE_NAME}
+  desiredCapacity: 0
+  minSize: 0
+  maxSize: 1
+  ssh:
+    allow: true
+    publicKeyName: k8s-sam
+  volumeSize: 100
+  volumeType: gp2
+  instanceType: ${INSTANCE_TYPE}
+  availabilityZones: ["${AWS_AVAILABILITY_ZONE}"]
+  labels:
+    nodegroup_type: gpu-ondemand-${INSTANCE_TYPE_NAME}
+  tags:
+    # EC2 tags required for cluster-autoscaler auto-discovery
+    k8s.io/cluster-autoscaler/node-template/label/lifecycle: OnDemand
+    k8s.io/cluster-autoscaler/node-template/label/aws.amazon.com/spot: "false"
+    k8s.io/cluster-autoscaler/node-template/label/gpu-count: "0"
+    k8s.io/cluster-autoscaler/${CLUSTER_NAME}: "owned"
+    k8s.io/cluster-autoscaler/node-template/label/nodegroup_type: "gpu-ondemand-${INSTANCE_TYPE_NAME}"
+  iam:
+    attachPolicyARNs:
+    - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+    - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+    - arn:aws:iam::aws:policy/AmazonS3FullAccess
+    - ${AWS_POLICY_ARN}
+    withAddonPolicies:
+      autoScaler: true
+      cloudWatch: true

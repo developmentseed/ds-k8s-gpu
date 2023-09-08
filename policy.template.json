@@ -1,0 +1,43 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "ClusterAutoScalerActions",
+            "Effect": "Allow",
+            "Action": [
+                "autoscaling:SetDesiredCapacity",
+                "autoscaling:TerminateInstanceInAutoScalingGroup"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "aws:ResourceTag/k8s.io/cluster-autoscaler/${CLUSTER_NAME}": "owned"
+                }
+            }
+        },
+        {
+            "Sid": "AutoScalingAndEC2Descriptions",
+            "Effect": "Allow",
+            "Action": [
+                "autoscaling:DescribeAutoScalingInstances",
+                "autoscaling:DescribeAutoScalingGroups",
+                "autoscaling:DescribeTags",
+                "autoscaling:DescribeLaunchConfigurations",
+                "ec2:DescribeLaunchTemplateVersions",
+                "ec2:DescribeInstanceTypes",
+                "eks:DescribeNodegroup"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "ECRActions",
+            "Effect": "Allow",
+            "Action": [
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchGetImage",
+                "ecr:BatchCheckLayerAvailability"
+            ],
+            "Resource": "arn:aws:ecr:*:${AWS_ACCOUNT_ID}:repository/*"
+        }
+    ]
+}

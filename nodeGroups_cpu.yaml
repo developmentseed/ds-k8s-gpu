@@ -1,0 +1,25 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: ${CLUSTER_NAME}
+  region: ${AWS_REGION}
+
+nodeGroups:
+- name: node-admin
+  instanceType: t3.medium
+  availabilityZones: ["${AWS_AVAILABILITY_ZONE}"]
+  desiredCapacity: 1
+  minSize: 1
+  maxSize: 1
+  volumeSize: 20
+  volumeType: gp2
+  labels:
+    nodegroup_type: admin
+  iam:
+    attachPolicyARNs:
+    - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+    - ${AWS_POLICY_ARN}
+    withAddonPolicies:
+      ebs: true
+      awsLoadBalancerController: true
+      efs: true
