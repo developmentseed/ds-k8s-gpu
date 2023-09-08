@@ -1,4 +1,4 @@
-# DevSeed k8s GPU cluster
+# DevSeed k8s cluster with GPU nodes
 
 This is a lab project aimed at providing easy access to GPU instances for machine learning engineers. The script uses eksctl to deploy a Kubernetes cluster that is equipped with GPU support. In addition, it allows users to choose between Spot and On-Demand instances. Once the cluster is up and running, it also prepares the environment for deploying Helm charts.
 
