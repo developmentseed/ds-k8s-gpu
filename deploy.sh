@@ -63,7 +63,7 @@ function createCluster {
         # Create cluster
         envsubst <cluster.yaml | eksctl create cluster -f -
 
-        # Create ASG policy
+        # # Create ASG policy
         envsubst <policy.template.json >policy.json
         aws iam create-policy --policy-name ${AWS_POLICY_NAME} --policy-document file://policy.json
 
@@ -113,8 +113,8 @@ export AWS_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output te
 export AWS_POLICY_NAME=devseed-k8s_${ENVIRONMENT}
 export AWS_POLICY_ARN=arn:aws:iam::${AWS_ACCOUNT_ID}:policy/${AWS_POLICY_NAME}
 export VPC_NAME="eksctl-${CLUSTER_NAME}-cluster/VPC"
-export AWS_AVAILABILITY_ZONE=us-east-1b
-# export AWS_AVAILABILITY_ZONE=$(get_az_public_subnet $VPC_NAME $AWS_REGION)
+# export AWS_AVAILABILITY_ZONE=us-east-1f
+export AWS_AVAILABILITY_ZONE=$(get_az_public_subnet $VPC_NAME $AWS_REGION)
 
 ACTION=${ACTION:-default}
 if [ "$ACTION" == "create_cluster" ]; then
