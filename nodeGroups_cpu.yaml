@@ -18,6 +18,8 @@ nodeGroups:
   iam:
     attachPolicyARNs:
     - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+    - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+    - arn:aws:iam::aws:policy/AmazonS3FullAccess
     - ${AWS_POLICY_ARN}
     withAddonPolicies:
       ebs: true

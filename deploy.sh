@@ -114,7 +114,6 @@ export AWS_POLICY_NAME=devseed-k8s_${ENVIRONMENT}
 export AWS_POLICY_ARN=arn:aws:iam::${AWS_ACCOUNT_ID}:policy/${AWS_POLICY_NAME}
 export VPC_NAME="eksctl-${CLUSTER_NAME}-cluster/VPC"
 export AWS_AVAILABILITY_ZONE=us-east-1b
-# TODO: fix later
 # export AWS_AVAILABILITY_ZONE=$(get_az_public_subnet $VPC_NAME $AWS_REGION)
 
 ACTION=${ACTION:-default}
