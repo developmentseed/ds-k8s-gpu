@@ -13,6 +13,7 @@ function createNodeGroups {
     ACTION=$1
     read -p "Are you sure you want to $ACTION NODES in the CLUSTER ${CLUSTER_NAME} in REGION ${AWS_REGION}? (y/n): " confirm
     if [[ $confirm == [Yy] ]]; then
+        ######################### GPU NODES #########################
         # Read the YAML file and convert it to a JSON string
         instance_json=$(python -c 'import sys, yaml, json; json.dump(yaml.safe_load(sys.stdin), sys.stdout, indent=4)' <instance_list.yaml)
         echo "nodegroup_type" >$CLUSTER_NAME-nodes.yaml
@@ -35,25 +36,31 @@ function createNodeGroups {
                 #     --query "InstanceTypeOfferings[?Location=='$AWS_AVAILABILITY_ZONE'].InstanceType" \
                 #     --output text | grep -q $FAMILY; then
 
-                    export NODEGROUP_TYPE=$nodegroup_type-$type
-                    echo "##################### $ACTION node: $FAMILY - $type"
-                    echo "##########################################"
-                    echo "Family:" $FAMILY
-                    echo "Spot Price:" $SPOT_PRICE
-                    echo "Nodegroup Type:" $NODEGROUP_TYPE
-                    echo "- $NODEGROUP_TYPE" >>$CLUSTER_NAME-nodes.yaml
+                export NODEGROUP_TYPE=$nodegroup_type-$type
+                echo "##################### $ACTION node: $FAMILY - $type"
+                echo "##########################################"
+                echo "Family:" $FAMILY
+                echo "Spot Price:" $SPOT_PRICE
+                echo "Nodegroup Type:" $NODEGROUP_TYPE
+                echo "- $NODEGROUP_TYPE" >>$CLUSTER_NAME-nodes.yaml
 
-                    # Create nodeGroups for the cluster
-                    if [ "$ACTION" == "create" ]; then
-                        envsubst <nodeGroups_gpu_$type.yaml | eksctl create nodegroup -f -
-                    elif [ "$ACTION" == "delete" ]; then
-                        envsubst <nodeGroups_gpu_$type.yaml | eksctl delete nodegroup --approve -f -
-                    fi
+                # Create nodeGroups for the cluster
+                if [ "$ACTION" == "create" ]; then
+                    envsubst <nodeGroups_gpu_$type.yaml | eksctl create nodegroup -f -
+                elif [ "$ACTION" == "delete" ]; then
+                    envsubst <nodeGroups_gpu_$type.yaml | eksctl delete nodegroup --approve -f -
+                fi
                 # else
                 #     echo "Instance type $FAMILY is NOT available in $AWS_AVAILABILITY_ZONE"
                 # fi
             done
         done
+        ######################### CPU NODES #########################
+        if [ "$ACTION" == "create" ]; then
+            envsubst <nodeGroups_cpu_workers.yaml | eksctl create nodegroup -f -
+        elif [ "$ACTION" == "delete" ]; then
+            envsubst <nodeGroups_cpu_workers.yaml | eksctl delete nodegroup --approve -f -
+        fi
     fi
 }
 

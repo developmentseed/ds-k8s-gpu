@@ -1,0 +1,71 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: ${CLUSTER_NAME}
+  region: ${AWS_REGION}
+nodeGroups:
+- name: cpu-worker-ondemand
+  instanceType: m5.xlarge
+  availabilityZones: ["${AWS_AVAILABILITY_ZONE}"]
+  desiredCapacity: 0
+  minSize: 0
+  maxSize: 1
+  volumeSize: 50
+  volumeType: gp2
+  labels:
+    nodegroup_type: cpu-worker-ondemand
+  ssh:
+    allow: true
+    publicKeyName: k8s-sam-${AWS_REGION}
+  iam:
+    attachPolicyARNs:
+    - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+    - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+    - arn:aws:iam::aws:policy/AmazonS3FullAccess
+    - ${AWS_POLICY_ARN}
+    withAddonPolicies:
+      autoScaler: true
+      cloudWatch: true
+  tags:
+    k8s.io/cluster-autoscaler/node-template/label/nodegroup_type: "cpu-worker-ondemand"
+- name: cpu-worker-spot
+  desiredCapacity: 0
+  minSize: 0
+  maxSize: 1
+  instancesDistribution:
+    maxPrice: 0.07
+    # 2xlarge/0.15
+    instanceTypes: ["m4.xlarge", "m5.xlarge", "m5a.xlarge", "m6a.xlarge", "m6i.xlarge", "t2.xlarge", "t3.2xlarge", "t3a.2xlarge"]
+    onDemandBaseCapacity: 0
+    onDemandPercentageAboveBaseCapacity: 0
+    spotAllocationStrategy: capacity-optimized
+  labels:
+    lifecycle: Ec2Spot
+    aws.amazon.com/spot: "true"
+    cpu-count: "0"
+    nodegroup_type: cpu-worker-spot
+  ssh:
+    allow: true
+    publicKeyName: k8s-sam-${AWS_REGION}
+  availabilityZones: ["${AWS_AVAILABILITY_ZONE}"]
+  taints:
+  - key: spotInstance
+    value: "true"
+    effect: PreferNoSchedule
+  tags:
+    k8s.io/cluster-autoscaler/node-template/label/lifecycle: Ec2Spot
+    k8s.io/cluster-autoscaler/node-template/label/aws.amazon.com/spot: "true"
+    k8s.io/cluster-autoscaler/node-template/label/cpu-count: "0"
+    k8s.io/cluster-autoscaler/node-template/taint/spotInstance: "true:PreferNoSchedule"
+    k8s.io/cluster-autoscaler/enabled: "true"
+    k8s.io/cluster-autoscaler/${CLUSTER_NAME}: "owned"
+    k8s.io/cluster-autoscaler/node-template/label/nodegroup_type: "cpu-worker-spot"
+  iam:
+    attachPolicyARNs:
+    - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+    - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+    - arn:aws:iam::aws:policy/AmazonS3FullAccess
+    - ${AWS_POLICY_ARN}
+    withAddonPolicies:
+      autoScaler: true
+      cloudWatch: true
