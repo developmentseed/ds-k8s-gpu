@@ -11,7 +11,7 @@ nodeGroups:
   maxSize: 1
   ssh:
     allow: true
-    publicKeyName: k8s-sam
+    publicKeyName: k8s-sam-${AWS_REGION}
   instancesDistribution:
     maxPrice: ${SPOT_PRICE}
     instanceTypes: ["${FAMILY}"]

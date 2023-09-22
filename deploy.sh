@@ -29,11 +29,11 @@ function createNodeGroups {
             for type in "${types[@]}"; do
 
                 # Check if instance family exist in the AZ
-                if aws ec2 describe-instance-type-offerings \
-                    --location-type availability-zone \
-                    --filters Name=instance-type,Values=$FAMILY \
-                    --query "InstanceTypeOfferings[?Location=='$AWS_AVAILABILITY_ZONE'].InstanceType" \
-                    --output text | grep -q $FAMILY; then
+                # if aws ec2 describe-instance-type-offerings \
+                #     --location-type availability-zone \
+                #     --filters Name=instance-type,Values=$FAMILY \
+                #     --query "InstanceTypeOfferings[?Location=='$AWS_AVAILABILITY_ZONE'].InstanceType" \
+                #     --output text | grep -q $FAMILY; then
 
                     export NODEGROUP_TYPE=$nodegroup_type-$type
                     echo "##################### $ACTION node: $FAMILY - $type"
@@ -49,9 +49,9 @@ function createNodeGroups {
                     elif [ "$ACTION" == "delete" ]; then
                         envsubst <nodeGroups_gpu_$type.yaml | eksctl delete nodegroup --approve -f -
                     fi
-                else
-                    echo "Instance type $FAMILY is NOT available in $AWS_AVAILABILITY_ZONE"
-                fi
+                # else
+                #     echo "Instance type $FAMILY is NOT available in $AWS_AVAILABILITY_ZONE"
+                # fi
             done
         done
     fi
@@ -61,7 +61,7 @@ function createCluster {
     read -p "Are you sure you want to CREATE a CLUSTER ${CLUSTER_NAME} in REGION ${AWS_REGION}? (y/n): " confirm
     if [[ $confirm == [Yy] ]]; then
         # Create cluster
-        envsubst <cluster.yaml | eksctl create cluster -f -
+        # envsubst <cluster.yaml | eksctl create cluster -f -
 
         # # Create ASG policy
         envsubst <policy.template.json >policy.json
@@ -110,12 +110,12 @@ export AWS_PARTITION="aws"
 export CLUSTER_NAME="devseed-k8s-${ENVIRONMENT}"
 export KUBERNETES_VERSION="1.27"
 export AWS_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
-export AWS_POLICY_NAME=devseed-k8s_${ENVIRONMENT}
+export AWS_POLICY_NAME=devseed-k8s_${ENVIRONMENT}-${AWS_REGION}
 export AWS_POLICY_ARN=arn:aws:iam::${AWS_ACCOUNT_ID}:policy/${AWS_POLICY_NAME}
 export VPC_NAME="eksctl-${CLUSTER_NAME}-cluster/VPC"
 # export AWS_AVAILABILITY_ZONE=us-east-1f
 export AWS_AVAILABILITY_ZONE=$(get_az_public_subnet $VPC_NAME $AWS_REGION)
-
+echo "Make sure you have created a Key pairs, called: k8s-sam-${AWS_REGION}..."
 ACTION=${ACTION:-default}
 if [ "$ACTION" == "create_cluster" ]; then
     createCluster
