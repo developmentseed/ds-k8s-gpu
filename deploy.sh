@@ -68,9 +68,9 @@ function createCluster {
     read -p "Are you sure you want to CREATE a CLUSTER ${CLUSTER_NAME} in REGION ${AWS_REGION}? (y/n): " confirm
     if [[ $confirm == [Yy] ]]; then
         # Create cluster
-        # envsubst <cluster.yaml | eksctl create cluster -f -
+        envsubst <cluster.yaml | eksctl create cluster -f -
 
-        # # Create ASG policy
+        # Create ASG policy
         envsubst <policy.template.json >policy.json
         aws iam create-policy --policy-name ${AWS_POLICY_NAME} --policy-document file://policy.json
 
